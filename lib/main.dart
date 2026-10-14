@@ -1,126 +1,281 @@
-import 'package:demo_01_bai06_p2/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
+import 'firebase_options.dart';
 
-void main() async{
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-);
-  runApp(const MyApp());
+Future<void> main() async {
+  // Chuẩn bị Flutter trước khi gọi plugin Firebase.
+  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    runApp(const MyApp());
+  } catch (error) {
+    // Hiển thị lỗi cấu hình thay vì để ứng dụng trắng màn hình.
+    runApp(
+      const MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Text(
+              'Không thể khởi tạo Firebase. Kiểm tra cấu hình và khởi động lại.',
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
+    const background = Color(0xFFFFF7FF);
     return MaterialApp(
-      title: 'Flutter Demo',
+      debugShowCheckedModeBanner: false,
+      title: 'Quản lý Ghi chú',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        scaffoldBackgroundColor: background,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: background,
+          surfaceTintColor: Colors.transparent,
+          centerTitle: true,
+          titleTextStyle: TextStyle(color: Colors.black87, fontSize: 20),
+        ),
+        dialogTheme: const DialogThemeData(backgroundColor: background),
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const NotesPage(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+class NotesPage extends StatefulWidget {
+  const NotesPage({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<NotesPage> createState() => _NotesPageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _NotesPageState extends State<NotesPage> {
+  // Dữ liệu được lưu tại /notes/<id> gồm title và content như ảnh.
+  final DatabaseReference _notesRef = FirebaseDatabase.instance.ref('notes');
+  late final Stream<DatabaseEvent> _notesStream;
+  final Set<String> _deletingIds = {};
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  @override
+  void initState() {
+    super.initState();
+    // Đăng ký stream một lần; Firebase gửi sự kiện khi dữ liệu thay đổi.
+    _notesStream = _notesRef.orderByKey().onValue;
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _deleteNote(String id) async {
+    setState(() => _deletingIds.add(id));
+    try {
+      // remove() chỉ xóa ghi chú có ID được chọn.
+      await _notesRef.child(id).remove();
+      _showMessage('Đã xóa ghi chú');
+    } catch (error) {
+      _showMessage('Không thể xóa. Kiểm tra kết nối và quyền Firebase.');
+    } finally {
+      if (mounted) setState(() => _deletingIds.remove(id));
+    }
+  }
+
+  Future<void> _showAddDialog() async {
+    final saved = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AddNoteDialog(
+        onSave: (title, content) async {
+          // push() tạo ID riêng; set() gửi dữ liệu lên Firebase.
+          await _notesRef.push().set({'title': title, 'content': content});
+        },
+      ),
+    );
+    if (saved == true) _showMessage('Đã lưu ghi chú lên Firebase');
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: .center,
-          children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
+      appBar: AppBar(title: const Text('Quản lý Ghi chú')),
+      // StreamBuilder tự vẽ lại danh sách khi nhận dữ liệu realtime.
+      body: StreamBuilder<DatabaseEvent>(
+        stream: _notesStream,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Text(
+                  'Không thể tải ghi chú. Kiểm tra kết nối và quyền đọc Firebase.',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            );
+          }
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          // Đảo thứ tự để ghi chú mới nhất nằm trên cùng.
+          final notes = snapshot.data!.snapshot.children
+              .where((child) => child.key != null && child.value is Map)
+              .toList()
+              .reversed
+              .toList();
+          if (notes.isEmpty) {
+            return const Center(child: Text('Chưa có ghi chú nào'));
+          }
+          return ListView.builder(
+            padding: const EdgeInsets.only(top: 8, bottom: 88),
+            itemCount: notes.length,
+            itemBuilder: (context, index) {
+              final note = notes[index];
+              final data = Map<Object?, Object?>.from(note.value as Map);
+              return ListTile(
+                title: Text(data['title']?.toString() ?? ''),
+                subtitle: Text(data['content']?.toString() ?? ''),
+                trailing: _deletingIds.contains(note.key)
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : IconButton(
+                        tooltip: 'Xóa ghi chú',
+                        color: Colors.red,
+                        icon: const Icon(Icons.delete),
+                        onPressed: () => _deleteNote(note.key!),
+                      ),
+              );
+            },
+          );
+        },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
+        onPressed: _showAddDialog,
+        tooltip: 'Thêm ghi chú',
+        backgroundColor: const Color(0xFFEADDFF),
         child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
+
+// Tách dialog để quản lý ô nhập và trạng thái lưu độc lập với danh sách.
+class AddNoteDialog extends StatefulWidget {
+  const AddNoteDialog({super.key, required this.onSave});
+  final Future<void> Function(String title, String content) onSave;
+
+  @override
+  State<AddNoteDialog> createState() => _AddNoteDialogState();
+}
+
+class _AddNoteDialogState extends State<AddNoteDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _titleController = TextEditingController();
+  final _contentController = TextEditingController();
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    // Giải phóng controller khi đóng dialog.
+    _titleController.dispose();
+    _contentController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      // trim() bỏ khoảng trắng; chỉ đóng sau khi Firebase xác nhận đã lưu.
+      await widget.onSave(
+        _titleController.text.trim(),
+        _contentController.text.trim(),
+      );
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          _error = 'Không thể lưu. Kiểm tra kết nối và quyền ghi Firebase.';
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Chặn Back và vô hiệu hóa các nút khi đang gửi để tránh lưu trùng.
+    return PopScope(
+      canPop: !_saving,
+      child: AlertDialog(
+        title: const Text('Thêm ghi chú mới'),
+        content: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: _titleController,
+                  enabled: !_saving,
+                  decoration: const InputDecoration(labelText: 'Tiêu đề'),
+                  textInputAction: TextInputAction.next,
+                  validator: (value) => value == null || value.trim().isEmpty
+                      ? 'Vui lòng nhập tiêu đề'
+                      : null,
+                ),
+                TextFormField(
+                  controller: _contentController,
+                  enabled: !_saving,
+                  decoration: const InputDecoration(labelText: 'Nội dung'),
+                  minLines: 1,
+                  maxLines: 5,
+                  validator: (value) => value == null || value.trim().isEmpty
+                      ? 'Vui lòng nhập nội dung'
+                      : null,
+                ),
+                if (_error != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: Text(
+                      _error!,
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: _saving ? null : () => Navigator.of(context).pop(false),
+            child: const Text('Hủy'),
+          ),
+          TextButton(
+            onPressed: _saving ? null : _save,
+            child: Text(_saving ? 'Đang lưu...' : 'Lưu'),
+          ),
+        ],
       ),
     );
   }

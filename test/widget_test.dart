@@ -1,30 +1,69 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
+import 'package:demo_01_bai06_p2/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:demo_01_bai06_p2/main.dart';
-
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('Kiểm tra nhập trống và gửi nội dung đã trim', (tester) async {
+    String? title;
+    String? content;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AddNoteDialog(
+            onSave: (t, c) async {
+              title = t;
+              content = c;
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Lưu'));
+    await tester.pumpAndSettle();
+    expect(find.text('Vui lòng nhập tiêu đề'), findsOneWidget);
+    expect(find.text('Vui lòng nhập nội dung'), findsOneWidget);
+    expect(title, isNull);
+    await tester.enterText(find.byType(TextFormField).at(0), ' IT HUTECH ');
+    await tester.enterText(
+      find.byType(TextFormField).at(1),
+      ' Bui Phu Khuyen ',
+    );
+    await tester.tap(find.text('Lưu'));
+    await tester.pumpAndSettle();
+    expect(title, 'IT HUTECH');
+    expect(content, 'Bui Phu Khuyen');
+  });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+  testWidgets('Lỗi lưu giữ lại dữ liệu để thử lại', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AddNoteDialog(
+            onSave: (_, _) async => throw Exception('permission-denied'),
+          ),
+        ),
+      ),
+    );
+    await tester.enterText(
+      find.byType(TextFormField).at(0),
+      'Flutter Firebase',
+    );
+    await tester.enterText(
+      find.byType(TextFormField).at(1),
+      'Realtime Database',
+    );
+    await tester.tap(find.text('Lưu'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Không thể lưu. Kiểm tra kết nối và quyền ghi Firebase.'),
+      findsOneWidget,
+    );
+    expect(find.text('Flutter Firebase'), findsOneWidget);
+    expect(
+      tester
+          .widget<TextButton>(find.widgetWithText(TextButton, 'Lưu'))
+          .onPressed,
+      isNotNull,
+    );
   });
 }

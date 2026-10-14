@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Firebase cần Internet cả khi chạy bản release. -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <application
         android:label="demo_01_bai06_p2"
         android:name="${applicationName}"
