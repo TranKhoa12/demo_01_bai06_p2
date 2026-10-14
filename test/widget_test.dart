@@ -1,4 +1,4 @@
-import 'package:demo_01_bai06_p2/main.dart';
+import 'package:demo_01_bai06_p2/widgets/add_note_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

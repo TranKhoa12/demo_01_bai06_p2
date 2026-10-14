@@ -5,11 +5,14 @@ hộp thoại Tiêu đề/Nội dung với Hủy/Lưu và nút xóa đỏ.
 
 ## Đọc code
 
-`lib/main.dart` có comment tiếng Việt theo từng phần:
-- `main`: khởi tạo Flutter và Firebase.
-- `MyApp`: cấu hình giao diện.
-- `NotesPage`: đọc realtime, hiển thị, thêm và xóa dữ liệu.
-- `AddNoteDialog`: kiểm tra nhập trống, gửi dữ liệu và xử lý lỗi.
+Code được tách theo trách nhiệm, có comment tiếng Việt:
+
+- `lib/main.dart`: khởi tạo Flutter, Firebase và chạy ứng dụng.
+- `lib/app.dart`: cấu hình giao diện chung và màn hình đầu tiên.
+- `lib/models/note.dart`: đối tượng ghi chú, chuyển dữ liệu từ Firebase.
+- `lib/services/note_service.dart`: đọc realtime, thêm và xóa trên Firebase.
+- `lib/screens/notes_page.dart`: hiển thị danh sách, mở dialog và báo kết quả.
+- `lib/widgets/add_note_dialog.dart`: nhập nội dung, kiểm tra và xử lý trạng thái lưu.
 
 ## Chạy
 
