@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "119441645461",
+    "firebase_url": "https://fir-ct5-default-rtdb.firebaseio.com",
+    "project_id": "fir-ct5",
+    "storage_bucket": "fir-ct5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:119441645461:android:7f60ba37ba7481e383209c",
+        "android_client_info": {
+          "package_name": "com.example.demo_01_bai06_p2"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDGLH2ym9ZkEB7goDXBj28vCa4VzSE6Jvs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
